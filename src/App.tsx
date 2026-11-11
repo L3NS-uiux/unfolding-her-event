@@ -1,4 +1,8 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 const Arrow = ({ down = false }: { down?: boolean }) => (
   <svg
@@ -19,6 +23,35 @@ const Spark = () => (
     />
   </svg>
 );
+
+const EventIcon = ({ kind }: { kind: "date" | "time" | "venue" }) => {
+  const paths = {
+    date: (
+      <>
+        <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+        <path d="M7.5 3.5v3M16.5 3.5v3M4 9.5h16M8 13h2M8 16h2M14 13h2" />
+      </>
+    ),
+    time: (
+      <>
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M12 7v5l3.5 2" />
+      </>
+    ),
+    venue: (
+      <>
+        <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" />
+        <circle cx="12" cy="10" r="2.2" />
+      </>
+    ),
+  };
+
+  return (
+    <svg aria-hidden="true" className="event-detail-icon" fill="none" viewBox="0 0 24 24">
+      {paths[kind]}
+    </svg>
+  );
+};
 
 const SocialIcon = ({ name }: { name: "whatsapp" | "instagram" | "x" | "tiktok" }) => {
   if (name === "whatsapp") {
@@ -118,8 +151,163 @@ function Countdown() {
 }
 
 export default function App() {
+  const pageRef = useRef<HTMLElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [joined, setJoined] = useState(false);
+
+  useLayoutEffect(() => {
+    const page = pageRef.current;
+    if (!page) return;
+
+    const media = gsap.matchMedia();
+    media.add("(prefers-reduced-motion: no-preference)", () => {
+      const context = gsap.context(() => {
+        gsap
+          .timeline({ defaults: { ease: "power3.out" } })
+          .from(".nav-shell", { autoAlpha: 0, y: -18, duration: 0.6 })
+          .from(".hero-masthead", { autoAlpha: 0, y: 28, duration: 0.75 }, "-=0.3")
+          .from(
+            ".hero-gallery > *",
+            {
+              autoAlpha: 0,
+              y: 36,
+              duration: 0.7,
+              stagger: 0.12,
+            },
+            "-=0.25",
+          );
+
+        gsap.from(".story .section-number, .story-heading, .story-body", {
+          autoAlpha: 0,
+          y: 34,
+          duration: 0.8,
+          stagger: 0.14,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: ".story",
+            start: "top 78%",
+            toggleActions: "play none none reverse",
+          },
+        });
+
+        gsap.from(".story-gallery > *", {
+          autoAlpha: 0,
+          y: 28,
+          scale: 0.97,
+          duration: 0.7,
+          stagger: 0.1,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: ".story-gallery",
+            start: "top 82%",
+            toggleActions: "play none none reverse",
+          },
+        });
+
+        gsap.from(".founder-kicker, .founder > h2", {
+          autoAlpha: 0,
+          y: 30,
+          duration: 0.7,
+          stagger: 0.12,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: ".founder",
+            start: "top 78%",
+            toggleActions: "play none none reverse",
+          },
+        });
+
+        gsap.from(".founder-layout > *", {
+          autoAlpha: 0,
+          x: (index) => (index === 0 ? -42 : index === 2 ? 42 : 0),
+          y: (index) => (index === 1 ? 28 : 0),
+          duration: 0.8,
+          stagger: 0.14,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: ".founder-layout",
+            start: "top 78%",
+            toggleActions: "play none none reverse",
+          },
+        });
+
+        gsap.from(".founder-statement", {
+          autoAlpha: 0,
+          y: 32,
+          duration: 0.85,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: ".founder-statement",
+            start: "top 88%",
+            toggleActions: "play none none reverse",
+          },
+        });
+
+        gsap.from(".event-image-wrap, .event-copy", {
+          autoAlpha: 0,
+          x: (index) => (index === 0 ? -46 : 46),
+          duration: 0.85,
+          stagger: 0.16,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: ".event-card",
+            start: "top 76%",
+            toggleActions: "play none none reverse",
+          },
+        });
+
+        gsap.from(".countdown-panel > *", {
+          autoAlpha: 0,
+          y: 26,
+          duration: 0.7,
+          stagger: 0.15,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: ".countdown-panel",
+            start: "top 85%",
+            toggleActions: "play none none reverse",
+          },
+        });
+
+        gsap.from(".community-copy, .community-form-wrap", {
+          autoAlpha: 0,
+          x: (index) => (index === 0 ? -38 : 38),
+          duration: 0.8,
+          stagger: 0.16,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: ".community",
+            start: "top 78%",
+            toggleActions: "play none none reverse",
+          },
+        });
+
+        page
+          .querySelectorAll<SVGPathElement>(".transition-brush-path, .transition-brush-detail")
+          .forEach((path) => {
+            const length = path.getTotalLength();
+            gsap.set(path, {
+              strokeDasharray: length,
+              strokeDashoffset: length,
+            });
+            gsap.to(path, {
+              strokeDashoffset: 0,
+              ease: "none",
+              scrollTrigger: {
+                trigger: ".story",
+                start: "top 95%",
+                end: "top 15%",
+                scrub: 0.7,
+              },
+            });
+          });
+      }, page);
+
+      return () => context.revert();
+    });
+
+    return () => media.revert();
+  }, []);
 
   const submitCommunityForm = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -128,7 +316,7 @@ export default function App() {
   };
 
   return (
-    <main>
+    <main ref={pageRef}>
       <nav className="nav-shell" aria-label="Main navigation">
         <a className="brand" href="#home" aria-label="Hadassah 31 home">
           <span className="brand-flame">♢</span>
@@ -137,8 +325,9 @@ export default function App() {
 
         <button
           aria-expanded={menuOpen}
-          aria-label="Toggle navigation"
-          className="menu-toggle"
+          aria-controls="site-navigation"
+          aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+          className={`menu-toggle ${menuOpen ? "menu-open" : ""}`}
           onClick={() => setMenuOpen((open) => !open)}
           type="button"
         >
@@ -146,63 +335,55 @@ export default function App() {
           <span />
         </button>
 
-        <div className={`nav-links ${menuOpen ? "nav-open" : ""}`}>
+        <div className={`nav-links ${menuOpen ? "nav-open" : ""}`} id="site-navigation">
           <a href="#story" onClick={() => setMenuOpen(false)}>
-            Our story
-          </a>
-          <a href="#experience" onClick={() => setMenuOpen(false)}>
-            The founder
+            About
           </a>
           <a href="#event" onClick={() => setMenuOpen(false)}>
-            The event
+            Programs
+          </a>
+          <a href="#experience" onClick={() => setMenuOpen(false)}>
+            Founder
+          </a>
+          <a href="#community" onClick={() => setMenuOpen(false)}>
+            Contact
           </a>
         </div>
 
         <a className="button button-small nav-cta" href="#community">
-          Join the community <Arrow />
+          <span className="nav-cta-label">Join us</span>
+          <span className="nav-cta-label-mobile">Join us</span>
+          <Arrow />
         </a>
       </nav>
 
       <section className="hero" id="home">
-        <header className="hero-masthead">
-          <div>
+        <div className="hero-layout">
+          <header className="hero-masthead">
             <p className="eyebrow">
-              <span /> Hadassah 31 presents
+              <span /> A community for women becoming
             </p>
             <h1>
               Unfolding <em>Her</em>
             </h1>
-          </div>
-          <div className="hero-intro">
-            <p>Unlearning. Relearning. Becoming.</p>
-            <span>A space for women to claim their voice and grow into who they are becoming.</span>
-          </div>
-        </header>
-
-        <div className="hero-gallery">
-          <article className="hero-card hero-card-purpose">
-            <span className="hero-card-number">01 / Our mission</span>
-            <div>
-              <h2>A room for every version of her.</h2>
-              <p>
-                We empower women and girls through honest conversation, mentorship, community
-                support, and access to meaningful learning opportunities.
-              </p>
+            <div className="hero-intro">
+              <p>Unlearning. Relearning. Becoming.</p>
+              <span>
+                A welcoming space to find your voice, grow at your own pace, and become who you
+                already have the potential to be.
+              </span>
             </div>
-            <a href="#story">
-              Why we gather <Arrow />
-            </a>
-          </article>
-
-          <div className="hero-card-stack">
-            <article className="hero-card hero-card-join">
-              <Spark />
-              <h2>Join women who are becoming, together.</h2>
-              <a className="button" href="#community">
-                Join our community <Arrow />
+            <div className="hero-actions">
+              <a className="button hero-cta" href="#community">
+                Find your circle <Arrow />
               </a>
-            </article>
+              <a className="hero-secondary" href="#story">
+                Get to know us <Arrow />
+              </a>
+            </div>
+          </header>
 
+          <div className="hero-gallery">
             <article className="hero-card hero-card-photo hero-card-women">
               <img
                 src="https://images.unsplash.com/photo-1655720357872-ce227e4164ba?auto=format&fit=crop&w=1200&q=85"
@@ -218,28 +399,32 @@ export default function App() {
               <small>Photo by Iwaria Inc. / Unsplash</small>
             </article>
           </div>
-
-          <article className="hero-card hero-card-vision">
-            <span className="hero-card-number">02 / Our vision</span>
-            <div className="hero-card-vision-copy">
-              <h2>Every girl deserves space to dream bigger.</h2>
-              <p>
-                We see a future where women and girls have the support, confidence, and opportunity
-                to learn, lead, and thrive.
-              </p>
-            </div>
-            <div className="hero-card-vision-photo">
-              <img
-                src="https://images.unsplash.com/photo-1567057420215-0afa9aa9253a?auto=format&fit=crop&w=1200&q=85"
-                alt="School children happily learning and writing together"
-              />
-              <small>Photo by Annie Spratt / Unsplash</small>
-            </div>
-          </article>
         </div>
       </section>
 
       <section className="story section-shell" id="story">
+        <svg
+          aria-hidden="true"
+          className="transition-brush"
+          fill="none"
+          preserveAspectRatio="none"
+          viewBox="0 0 1440 420"
+        >
+          <path
+            className="transition-brush-path"
+            d="M-70 40 C170 85 315 230 505 250 C665 267 650 75 785 98 C930 123 875 278 1030 316 C1180 354 1325 338 1510 405"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="58"
+          />
+          <path
+            className="transition-brush-detail"
+            d="M-70 40 C170 85 315 230 505 250 C665 267 650 75 785 98 C930 123 875 278 1030 316 C1180 354 1325 338 1510 405"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="12"
+          />
+        </svg>
         <div className="section-number">/ 01</div>
         <div className="story-heading">
           <p className="eyebrow eyebrow-dark">
@@ -264,6 +449,45 @@ export default function App() {
           <a className="text-link dark-link" href="#community">
             Meet the community <Arrow />
           </a>
+        </div>
+        <div className="story-gallery" role="group" aria-label="Moments from our community">
+          <figure className="story-photo story-photo-circle">
+            <figcaption>
+              <span className="story-photo-kicker">Our community</span>
+              <strong>Room to belong, just as you are.</strong>
+              <p>A warm circle where every woman is seen, supported, and welcome.</p>
+            </figcaption>
+            <img
+              src="/images/community-circle.jpg"
+              alt="Women gathered in a circle, smiling down into the camera"
+            />
+          </figure>
+          <figure className="story-photo story-photo-workshop story-photo-image-only">
+            <img
+              src="/images/community-workshop.jpg"
+              alt="A woman listening and taking notes during a workshop"
+            />
+          </figure>
+          <figure className="story-photo story-photo-friends story-photo-image-only">
+            <img src="/images/community-friends.jpg" alt="Two friends sharing a joyful moment" />
+          </figure>
+          <figure className="story-photo story-photo-sisterhood story-photo-image-only">
+            <img
+              src="/images/community-sisterhood.jpg"
+              alt="Women standing together outdoors in colorful prints"
+            />
+          </figure>
+          <figure className="story-photo story-photo-gathering">
+            <figcaption>
+              <span className="story-photo-kicker">Make memories</span>
+              <strong>Come as you are. Leave more connected.</strong>
+              <p>Shared moments become the beginning of something beautiful.</p>
+            </figcaption>
+            <img
+              src="/images/community-gathering.jpg"
+              alt="A group of women celebrating together"
+            />
+          </figure>
         </div>
       </section>
 
@@ -300,11 +524,13 @@ export default function App() {
               </a>
             </div>
           </div>
-          <p className="founder-statement">
-            WITH HER, WOMEN ARE SEEN,
-            <br />
-            SUPPORTED & SET IN MOTION.
-          </p>
+          <div className="founder-statement-wrap">
+            <p className="founder-statement">
+              WITH HER, WOMEN ARE SEEN,
+              <br />
+              SUPPORTED & SET IN MOTION.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -321,25 +547,30 @@ export default function App() {
             <p className="eyebrow eyebrow-dark">
               <span /> Coming up
             </p>
-            <h2>
-              Your next chapter
-              <br />
-              has a date.
-            </h2>
+            <div className="event-title">
+              <h2>
+                Your next chapter
+                <br />
+                has a date.
+              </h2>
+            </div>
             <p className="event-dek">
               Join convener <strong>Maureen Okey</strong> for the Hadassah 31 community launch—a
               morning of unlearning, relearning, and becoming.
             </p>
             <div className="event-details">
               <div>
+                <EventIcon kind="date" />
                 <span>Date</span>
                 <strong>November 14</strong>
               </div>
               <div>
+                <EventIcon kind="time" />
                 <span>Time</span>
                 <strong>11:00 AM</strong>
               </div>
               <div>
+                <EventIcon kind="venue" />
                 <span>Venue</span>
                 <strong>Lorin Innovation Hub</strong>
               </div>
