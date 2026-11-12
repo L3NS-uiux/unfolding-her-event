@@ -1,57 +1,37 @@
-import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { FormEvent, useLayoutEffect, useEffect, useRef, useState } from "react";
+import {
+  ArrowRight,
+  ArrowUp,
+  Calendar,
+  CalendarHeart,
+  CalendarPlus,
+  MessagesSquare,
+  Navigation,
+  HandHeart,
+  Heart,
+  NotebookPen,
+  Smile,
+  Users,
+  ChevronsDown,
+  Clock,
+  HeartHandshake,
+  Hourglass,
+  Mail,
+  MapPin,
+  MessageCircleHeart,
+  PartyPopper,
+  Quote,
+  SendHorizontal,
+  Share2,
+  Sparkles,
+  Sprout,
+  UserRound,
+} from "lucide-react";
+import { BrushStroke } from "./components/BrushStroke";
+import { BrandMark } from "./components/BrandMark";
+import { celebrate, initAnimations } from "./animations";
 
-gsap.registerPlugin(ScrollTrigger);
-
-const Arrow = ({ down = false }: { down?: boolean }) => (
-  <svg
-    aria-hidden="true"
-    className={down ? "h-4 w-4 rotate-90" : "h-4 w-4"}
-    fill="none"
-    viewBox="0 0 24 24"
-  >
-    <path d="M5 12h14M14 6l6 6-6 6" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
-  </svg>
-);
-
-const Spark = () => (
-  <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-    <path
-      d="M12 1.5c.7 6.3 4.2 9.8 10.5 10.5-6.3.7-9.8 4.2-10.5 10.5C11.3 16.2 7.8 12.7 1.5 12 7.8 11.3 11.3 7.8 12 1.5Z"
-      fill="currentColor"
-    />
-  </svg>
-);
-
-const EventIcon = ({ kind }: { kind: "date" | "time" | "venue" }) => {
-  const paths = {
-    date: (
-      <>
-        <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
-        <path d="M7.5 3.5v3M16.5 3.5v3M4 9.5h16M8 13h2M8 16h2M14 13h2" />
-      </>
-    ),
-    time: (
-      <>
-        <circle cx="12" cy="12" r="8.5" />
-        <path d="M12 7v5l3.5 2" />
-      </>
-    ),
-    venue: (
-      <>
-        <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" />
-        <circle cx="12" cy="10" r="2.2" />
-      </>
-    ),
-  };
-
-  return (
-    <svg aria-hidden="true" className="event-detail-icon" fill="none" viewBox="0 0 24 24">
-      {paths[kind]}
-    </svg>
-  );
-};
+const Arrow = () => <ArrowRight aria-hidden="true" className="h-4 w-4" strokeWidth={1.8} />;
 
 const SocialIcon = ({ name }: { name: "whatsapp" | "instagram" | "x" | "tiktok" }) => {
   if (name === "whatsapp") {
@@ -108,11 +88,91 @@ const SocialIcon = ({ name }: { name: "whatsapp" | "instagram" | "x" | "tiktok" 
   );
 };
 
+const EVENT = {
+  title: "UNFOLDING HER: Unlearning, Relearning & Becoming",
+  venue: "Ilorin Innovation Hub",
+  address: "9a Ahmadu Bello Way, Ilorin 240212, Kwara, Nigeria",
+  registerUrl: "https://luma.com/0d3iaqyz",
+  // 14 November, 12:00 PM – 3:00 PM West Africa Time (UTC+1), per the Luma page.
+  startUtcHour: 11,
+  durationHours: 3,
+};
+
+/** Next 14 November at 12:00 PM WAT, as an absolute instant (correct in any timezone). */
 function getNextEvent() {
   const now = new Date();
-  let event = new Date(now.getFullYear(), 10, 14, 11, 0, 0);
-  if (event.getTime() <= now.getTime()) event = new Date(now.getFullYear() + 1, 10, 14, 11, 0, 0);
-  return event;
+  const at = (year: number) => new Date(Date.UTC(year, 10, 14, EVENT.startUtcHour, 0, 0));
+  const event = at(now.getUTCFullYear());
+  return event.getTime() > now.getTime() ? event : at(now.getUTCFullYear() + 1);
+}
+
+/** Builds an .ics invite (UTC times, so calendars convert to local) and downloads it. */
+function downloadCalendarInvite() {
+  const start = getNextEvent();
+  const end = new Date(start.getTime() + EVENT.durationHours * 3_600_000);
+  const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const escape = (text: string) => text.replace(/[,;\\]/g, (c) => `\\${c}`);
+  const ics = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Hadassah 31//Unfolding Her//EN",
+    "BEGIN:VEVENT",
+    `UID:unfolding-her-${start.getUTCFullYear()}@hadassah31`,
+    `DTSTAMP:${stamp(new Date())}`,
+    `DTSTART:${stamp(start)}`,
+    `DTEND:${stamp(end)}`,
+    `SUMMARY:${escape(EVENT.title)}`,
+    `LOCATION:${escape(`${EVENT.venue}, ${EVENT.address}`)}`,
+    `URL:${EVENT.registerUrl}`,
+    `DESCRIPTION:${escape(
+      `An afternoon of unlearning, relearning, and becoming with Hadassah31 Foundation. Register: ${EVENT.registerUrl}`,
+    )}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+  const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+  const link = Object.assign(document.createElement("a"), { href: url, download: "unfolding-her.ics" });
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+/** Native share sheet where supported (phones); otherwise copies the Luma link. */
+async function shareInvite(): Promise<"shared" | "copied" | "failed"> {
+  const data = {
+    title: EVENT.title,
+    text: "Join me at Unfolding Her by Hadassah31 Foundation, 14 November in Ilorin. Register here:",
+    url: EVENT.registerUrl,
+  };
+  try {
+    if (navigator.share) {
+      await navigator.share(data);
+      return "shared";
+    }
+    await navigator.clipboard.writeText(`${data.text} ${data.url}`);
+    return "copied";
+  } catch (error) {
+    // Dismissing the share sheet is not a failure.
+    if (error instanceof DOMException && error.name === "AbortError") return "shared";
+    return "failed";
+  }
+}
+
+/** Each digit rolls up when it changes (the inner key remounts the span). */
+function RollingNumber({ value }: { value: number }) {
+  return (
+    <strong className="rolling-number">
+      {String(value)
+        .padStart(2, "0")
+        .split("")
+        .map((digit, index) => (
+          <span className="digit" key={index}>
+            <span className="digit-in" key={digit}>
+              {digit}
+            </span>
+          </span>
+        ))}
+    </strong>
+  );
 }
 
 function Countdown() {
@@ -140,7 +200,7 @@ function Countdown() {
       {values.map(({ label, value }, index) => (
         <div className="contents" key={label}>
           <div className="countdown-unit">
-            <strong>{String(value).padStart(2, "0")}</strong>
+            <RollingNumber value={value} />
             <span>{label}</span>
           </div>
           {index < values.length - 1 && <span className="countdown-colon">:</span>}
@@ -150,176 +210,103 @@ function Countdown() {
   );
 }
 
+const PERKS = [
+  { Icon: CalendarHeart, label: "First access to gatherings" },
+  { Icon: MessagesSquare, label: "Mentorship conversations" },
+  { Icon: Mail, label: "Community news, never spam" },
+];
+
+const NAV_LINKS = [
+  ["#story", "About"],
+  ["#experience", "Founder"],
+  ["#event", "Programs"],
+  ["#community", "Contact"],
+] as const;
+
+const PILLARS = [
+  { Icon: MessageCircleHeart, label: "Honest conversation" },
+  { Icon: Sprout, label: "Practical mentorship" },
+  { Icon: HeartHandshake, label: "Collective courage" },
+];
+
+const MOMENTS = [
+  {
+    key: "circle",
+    src: "/images/community-circle.jpg",
+    alt: "Women gathered in a circle, smiling down into the camera",
+    caption: "Our circle",
+    Icon: Users,
+  },
+  {
+    key: "workshop",
+    src: "/images/community-workshop.jpg",
+    alt: "A woman listening and taking notes during a workshop",
+    caption: "Learning out loud",
+    Icon: NotebookPen,
+  },
+  {
+    key: "friends",
+    src: "/images/community-friends.jpg",
+    alt: "Two friends sharing a joyful moment",
+    caption: "Friendships that stay",
+    Icon: Smile,
+  },
+  {
+    key: "sisterhood",
+    src: "/images/community-sisterhood.jpg",
+    alt: "Women standing together outdoors in colorful prints",
+    caption: "Sisterhood",
+    Icon: HandHeart,
+  },
+  {
+    key: "gathering",
+    src: "/images/community-gathering.jpg",
+    alt: "A group of women celebrating together",
+    caption: "Celebrating each other",
+    Icon: PartyPopper,
+  },
+];
+
 export default function App() {
   const pageRef = useRef<HTMLElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [joined, setJoined] = useState(false);
+  const [shareLabel, setShareLabel] = useState("Share the invite");
+
+  const onShare = async () => {
+    const result = await shareInvite();
+    if (result === "shared") return;
+    setShareLabel(result === "copied" ? "Link copied!" : "Copy failed, try again");
+    window.setTimeout(() => setShareLabel("Share the invite"), 2400);
+  };
+  const menuOpenRef = useRef(menuOpen);
+  menuOpenRef.current = menuOpen;
 
   useLayoutEffect(() => {
-    const page = pageRef.current;
-    if (!page) return;
-
-    const media = gsap.matchMedia();
-    media.add("(prefers-reduced-motion: no-preference)", () => {
-      const context = gsap.context(() => {
-        gsap
-          .timeline({ defaults: { ease: "power3.out" } })
-          .from(".nav-shell", { autoAlpha: 0, y: -18, duration: 0.6 })
-          .from(".hero-masthead", { autoAlpha: 0, y: 28, duration: 0.75 }, "-=0.3")
-          .from(
-            ".hero-gallery > *",
-            {
-              autoAlpha: 0,
-              y: 36,
-              duration: 0.7,
-              stagger: 0.12,
-            },
-            "-=0.25",
-          );
-
-        gsap.from(".story .section-number, .story-heading, .story-body", {
-          autoAlpha: 0,
-          y: 34,
-          duration: 0.8,
-          stagger: 0.14,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: ".story",
-            start: "top 78%",
-            toggleActions: "play none none reverse",
-          },
-        });
-
-        gsap.from(".story-gallery > *", {
-          autoAlpha: 0,
-          y: 28,
-          scale: 0.97,
-          duration: 0.7,
-          stagger: 0.1,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: ".story-gallery",
-            start: "top 82%",
-            toggleActions: "play none none reverse",
-          },
-        });
-
-        gsap.from(".founder-kicker, .founder > h2", {
-          autoAlpha: 0,
-          y: 30,
-          duration: 0.7,
-          stagger: 0.12,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: ".founder",
-            start: "top 78%",
-            toggleActions: "play none none reverse",
-          },
-        });
-
-        gsap.from(".founder-layout > *", {
-          autoAlpha: 0,
-          x: (index) => (index === 0 ? -42 : index === 2 ? 42 : 0),
-          y: (index) => (index === 1 ? 28 : 0),
-          duration: 0.8,
-          stagger: 0.14,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: ".founder-layout",
-            start: "top 78%",
-            toggleActions: "play none none reverse",
-          },
-        });
-
-        gsap.from(".founder-statement", {
-          autoAlpha: 0,
-          y: 32,
-          duration: 0.85,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: ".founder-statement",
-            start: "top 88%",
-            toggleActions: "play none none reverse",
-          },
-        });
-
-        gsap.from(".event-image-wrap, .event-copy", {
-          autoAlpha: 0,
-          x: (index) => (index === 0 ? -46 : 46),
-          duration: 0.85,
-          stagger: 0.16,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: ".event-card",
-            start: "top 76%",
-            toggleActions: "play none none reverse",
-          },
-        });
-
-        gsap.from(".countdown-panel > *", {
-          autoAlpha: 0,
-          y: 26,
-          duration: 0.7,
-          stagger: 0.15,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: ".countdown-panel",
-            start: "top 85%",
-            toggleActions: "play none none reverse",
-          },
-        });
-
-        gsap.from(".community-copy, .community-form-wrap", {
-          autoAlpha: 0,
-          x: (index) => (index === 0 ? -38 : 38),
-          duration: 0.8,
-          stagger: 0.16,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: ".community",
-            start: "top 78%",
-            toggleActions: "play none none reverse",
-          },
-        });
-
-        page
-          .querySelectorAll<SVGPathElement>(".transition-brush-path, .transition-brush-detail")
-          .forEach((path) => {
-            const length = path.getTotalLength();
-            gsap.set(path, {
-              strokeDasharray: length,
-              strokeDashoffset: length,
-            });
-            gsap.to(path, {
-              strokeDashoffset: 0,
-              ease: "none",
-              scrollTrigger: {
-                trigger: ".story",
-                start: "top 95%",
-                end: "top 15%",
-                scrub: 0.7,
-              },
-            });
-          });
-      }, page);
-
-      return () => context.revert();
-    });
-
-    return () => media.revert();
+    if (!pageRef.current) return;
+    return initAnimations(pageRef.current, () => menuOpenRef.current);
   }, []);
 
   const submitCommunityForm = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const button = event.currentTarget.querySelector("button");
+    if (button) celebrate(button);
     setJoined(true);
     event.currentTarget.reset();
   };
 
   return (
     <main ref={pageRef}>
+      <div className="intro-curtain" aria-hidden="true">
+        <span>
+          Unfolding <em>Her</em>
+        </span>
+      </div>
+      <div className="scroll-progress" aria-hidden="true" />
+
       <nav className="nav-shell" aria-label="Main navigation">
         <a className="brand" href="#home" aria-label="Hadassah 31 home">
-          <span className="brand-flame">♢</span>
+          <BrandMark />
           <span>Hadassah 31</span>
         </a>
 
@@ -336,33 +323,26 @@ export default function App() {
         </button>
 
         <div className={`nav-links ${menuOpen ? "nav-open" : ""}`} id="site-navigation">
-          <a href="#story" onClick={() => setMenuOpen(false)}>
-            About
-          </a>
-          <a href="#event" onClick={() => setMenuOpen(false)}>
-            Programs
-          </a>
-          <a href="#experience" onClick={() => setMenuOpen(false)}>
-            Founder
-          </a>
-          <a href="#community" onClick={() => setMenuOpen(false)}>
-            Contact
-          </a>
+          {NAV_LINKS.map(([href, label]) => (
+            <a href={href} key={href} onClick={() => setMenuOpen(false)}>
+              {label}
+            </a>
+          ))}
         </div>
 
-        <a className="button button-small nav-cta" href="#community">
-          <span className="nav-cta-label">Join us</span>
-          <span className="nav-cta-label-mobile">Join us</span>
-          <Arrow />
+        <a
+          className="button button-small nav-cta"
+          href={EVENT.registerUrl}
+          rel="noreferrer"
+          target="_blank"
+        >
+          Join us <Arrow />
         </a>
       </nav>
 
       <section className="hero" id="home">
         <div className="hero-layout">
           <header className="hero-masthead">
-            <p className="eyebrow">
-              <span /> A community for women becoming
-            </p>
             <h1>
               Unfolding <em>Her</em>
             </h1>
@@ -370,7 +350,13 @@ export default function App() {
               <p>Unlearning. Relearning. Becoming.</p>
               <span>
                 A welcoming space to find your voice, grow at your own pace, and become who you
-                already have the potential to be.
+                already have the potential to be. Unfolding Her brings women together for honest
+                conversations, practical mentorship, and the kind of sisterhood that reminds you
+                that you were never meant to grow alone.
+              </span>
+              <span>
+                Whether you are starting over, starting out, or simply learning to listen to
+                yourself again, there is a seat saved for you in this circle.
               </span>
             </div>
             <div className="hero-actions">
@@ -400,103 +386,106 @@ export default function App() {
             </article>
           </div>
         </div>
+
+        <a className="scroll-cue" href="#story">
+          <ChevronsDown aria-hidden="true" strokeWidth={1.6} />
+          Scroll to unfold
+        </a>
       </section>
 
       <section className="story section-shell" id="story">
-        <svg
-          aria-hidden="true"
-          className="transition-brush"
-          fill="none"
-          preserveAspectRatio="none"
-          viewBox="0 0 1440 420"
-        >
-          <path
-            className="transition-brush-path"
-            d="M-70 40 C170 85 315 230 505 250 C665 267 650 75 785 98 C930 123 875 278 1030 316 C1180 354 1325 338 1510 405"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeWidth="58"
-          />
-          <path
-            className="transition-brush-detail"
-            d="M-70 40 C170 85 315 230 505 250 C665 267 650 75 785 98 C930 123 875 278 1030 316 C1180 354 1325 338 1510 405"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeWidth="12"
-          />
-        </svg>
-        <div className="section-number">/ 01</div>
+        <BrushStroke variant="story" />
+        <div className="section-number" data-fly="fade">
+          / 01
+        </div>
         <div className="story-heading">
-          <p className="eyebrow eyebrow-dark">
+          <p className="eyebrow eyebrow-dark" data-fly="left">
             <span /> Why we gather
           </p>
-          <h2>
+          <h2 data-split>
             There is more
             <br />
             inside <em>her.</em>
           </h2>
         </div>
         <div className="story-body">
-          <p className="lead">
+          <p className="lead" data-fly>
             Hadassah 31 is a women-led community built on a simple belief: when a woman is seen,
             supported, and stretched, everything around her changes.
           </p>
-          <p>
+          <p data-fly>
             Unfolding Her is an invitation to pause the performance and reconnect with the woman
-            underneath it all. Through honest conversation, practical mentorship, and collective
-            courage, we make room for the next version of ourselves.
+            underneath it all.
           </p>
-          <a className="text-link dark-link" href="#community">
+          <ul className="pillars">
+            {PILLARS.map(({ Icon, label }) => (
+              <li data-fly key={label}>
+                <span className="pillar-icon">
+                  <Icon aria-hidden="true" className="icon-draw" strokeWidth={1.5} />
+                </span>
+                {label}
+              </li>
+            ))}
+          </ul>
+          <a className="text-link dark-link" data-fly href="#community">
             Meet the community <Arrow />
           </a>
         </div>
-        <div className="story-gallery" role="group" aria-label="Moments from our community">
-          <figure className="story-photo story-photo-circle">
-            <figcaption>
-              <span className="story-photo-kicker">Our community</span>
-              <strong>Room to belong, just as you are.</strong>
-              <p>A warm circle where every woman is seen, supported, and welcome.</p>
-            </figcaption>
-            <img
-              src="/images/community-circle.jpg"
-              alt="Women gathered in a circle, smiling down into the camera"
-            />
-          </figure>
-          <figure className="story-photo story-photo-workshop story-photo-image-only">
-            <img
-              src="/images/community-workshop.jpg"
-              alt="A woman listening and taking notes during a workshop"
-            />
-          </figure>
-          <figure className="story-photo story-photo-friends story-photo-image-only">
-            <img src="/images/community-friends.jpg" alt="Two friends sharing a joyful moment" />
-          </figure>
-          <figure className="story-photo story-photo-sisterhood story-photo-image-only">
-            <img
-              src="/images/community-sisterhood.jpg"
-              alt="Women standing together outdoors in colorful prints"
-            />
-          </figure>
-          <figure className="story-photo story-photo-gathering">
-            <figcaption>
-              <span className="story-photo-kicker">Make memories</span>
-              <strong>Come as you are. Leave more connected.</strong>
-              <p>Shared moments become the beginning of something beautiful.</p>
-            </figcaption>
-            <img
-              src="/images/community-gathering.jpg"
-              alt="A group of women celebrating together"
-            />
-          </figure>
+      </section>
+
+      <section className="moments" id="moments" aria-labelledby="moments-title">
+        <div className="moments-stage">
+          <div className="moments-copy">
+            <p className="moments-note">moments from our circle</p>
+            <h2 id="moments-title">
+              Come as you are.
+              <br />
+              <em>Leave held.</em>
+            </h2>
+            <p>
+              Every gathering is a little different: a workshop that stretches you, a conversation
+              that stays with you for weeks, a table full of women cheering each other on. These
+              are a few of the moments that make Hadassah 31 feel like home.
+            </p>
+            <ul className="moments-tags">
+              <li>
+                <Heart aria-hidden="true" strokeWidth={1.7} /> Sisterhood
+              </li>
+              <li>
+                <NotebookPen aria-hidden="true" strokeWidth={1.7} /> Workshops
+              </li>
+              <li>
+                <Sparkles aria-hidden="true" strokeWidth={1.7} /> Celebrations
+              </li>
+            </ul>
+          </div>
+
+          <div className="moments-photos" role="group" aria-label="Moments from our community">
+            {MOMENTS.map(({ key, src, alt, caption, Icon }) => (
+              <figure className={`moment moment-${key}`} key={key}>
+                <img src={src} alt={alt} loading="lazy" />
+                <figcaption>
+                  <Icon aria-hidden="true" strokeWidth={1.7} />
+                  {caption}
+                </figcaption>
+              </figure>
+            ))}
+            <p className="moment-sticker" aria-hidden="true">
+              you belong here <Heart strokeWidth={2} />
+            </p>
+          </div>
         </div>
       </section>
 
       <section className="experience" id="experience">
+        <BrushStroke variant="founder" />
         <div className="founder section-shell">
-          <p className="founder-kicker">The woman behind the vision</p>
-          <h2>About the founder</h2>
+          <p className="founder-kicker" data-fly="fade">
+            The woman behind the vision
+          </p>
+          <h2 data-split>About the founder</h2>
           <div className="founder-layout">
-            <div className="founder-copy founder-copy-left">
+            <div className="founder-copy founder-copy-left" data-fly="left">
               <p>
                 Maureen Okey is the convener behind Hadassah 31—a community created to help women
                 grow in confidence, connection, and purpose.
@@ -508,10 +497,10 @@ export default function App() {
             </div>
 
             <div className="founder-portrait">
-              <img src="/images/maureen-okey.png" alt="Maureen Okey, founder of Hadassah 31" />
+              <img src="/images/founder-maureen.jpg" alt="Maureen Okey, founder of Hadassah 31, in a magenta blouse and plum blazer" />
             </div>
 
-            <div className="founder-copy founder-copy-right">
+            <div className="founder-copy founder-copy-right" data-fly="right">
               <span>Founder & Convener</span>
               <h3>Maureen Okey</h3>
               <p>
@@ -525,6 +514,7 @@ export default function App() {
             </div>
           </div>
           <div className="founder-statement-wrap">
+            <Quote aria-hidden="true" className="statement-quote icon-draw" strokeWidth={1.2} />
             <p className="founder-statement">
               WITH HER, WOMEN ARE SEEN,
               <br />
@@ -535,106 +525,175 @@ export default function App() {
       </section>
 
       <section className="event-section" id="event">
+        <BrushStroke variant="event" />
         <div className="event-card section-shell">
-          <div className="event-image-wrap">
-            <img
-              src="/images/women-tech-event.png"
-              alt="Women sharing ideas during a panel conversation at a community event"
-            />
+          <div className="event-image-wrap" data-fly="left">
+            <div className="event-image-inner">
+              <img
+                src="/images/women-tech-event.png"
+                alt="Women sharing ideas during a panel conversation at a community event"
+              />
+            </div>
             <span className="image-caption">Women in conversation / Community in motion</span>
           </div>
           <div className="event-copy">
-            <p className="eyebrow eyebrow-dark">
+            <p className="eyebrow eyebrow-dark" data-fly="right">
               <span /> Coming up
             </p>
             <div className="event-title">
-              <h2>
+              <h2 data-split>
                 Your next chapter
                 <br />
                 has a date.
               </h2>
             </div>
-            <p className="event-dek">
+            <p className="event-dek" data-fly>
               Join convener <strong>Maureen Okey</strong> for the Hadassah 31 community launch—a
-              morning of unlearning, relearning, and becoming.
+              afternoon of unlearning, relearning, and becoming.
             </p>
             <div className="event-details">
-              <div>
-                <EventIcon kind="date" />
-                <span>Date</span>
-                <strong>November 14</strong>
-              </div>
-              <div>
-                <EventIcon kind="time" />
-                <span>Time</span>
-                <strong>11:00 AM</strong>
-              </div>
-              <div>
-                <EventIcon kind="venue" />
-                <span>Venue</span>
-                <strong>Lorin Innovation Hub</strong>
-              </div>
+              {[
+                { Icon: Calendar, label: "Date", value: "November 14" },
+                { Icon: Clock, label: "Time", value: "12:00 – 3:00 PM" },
+                { Icon: MapPin, label: "Venue", value: EVENT.venue },
+              ].map(({ Icon, label, value }) => (
+                <div data-fly key={label}>
+                  <Icon aria-hidden="true" className="event-detail-icon icon-draw" strokeWidth={1.6} />
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </div>
+              ))}
             </div>
-            <a className="button button-dark" href="#community">
-              Reserve your place <Arrow />
-            </a>
+            <div className="event-actions" data-fly>
+              <a
+                className="button button-dark"
+                href={EVENT.registerUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Register on Luma <Arrow />
+              </a>
+              <button className="button button-outline" onClick={downloadCalendarInvite} type="button">
+                <CalendarPlus aria-hidden="true" className="h-4 w-4" strokeWidth={1.8} />
+                Add to calendar
+              </button>
+              <button className="button button-outline" onClick={onShare} type="button">
+                <Share2 aria-hidden="true" className="h-4 w-4" strokeWidth={1.8} />
+                {shareLabel}
+              </button>
+              <a
+                className="text-link dark-link event-directions"
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                  `${EVENT.venue}, ${EVENT.address}`,
+                )}`}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <Navigation aria-hidden="true" strokeWidth={1.8} /> Get directions
+              </a>
+            </div>
           </div>
         </div>
 
         <div className="countdown-panel section-shell">
-          <div>
+          <div data-fly="left">
             <p className="eyebrow">
-              <span /> Until we gather
+              <Hourglass aria-hidden="true" className="icon-hourglass" strokeWidth={1.6} /> Until we
+              gather
             </p>
-            <p className="countdown-note">The next November 14 gathering begins at 11:00 AM.</p>
+            <p className="countdown-note">
+              Saturday, 14 November · 12:00 PM WAT · Ilorin Innovation Hub
+            </p>
+            <span className="live-dot">Counting down live</span>
           </div>
-          <Countdown />
+          <div className="countdown-side" data-fly="right">
+            <Countdown />
+            <a
+              className="button button-light countdown-register"
+              href={EVENT.registerUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Save your seat on Luma <Arrow />
+            </a>
+          </div>
         </div>
       </section>
 
       <section className="community section-shell" id="community">
+        <BrushStroke variant="community" />
         <div className="community-copy">
-          <p className="eyebrow">
+          <p className="eyebrow" data-fly="left">
             <span /> Stay in the circle
           </p>
-          <h2>
+          <h2 data-split>
             Keep
             <br />
             <em>unfolding.</em>
           </h2>
-          <p>
+          <p data-fly>
             Join a growing circle of women choosing courage, community, and conscious growth. Get
             first access to gatherings, mentorship conversations, and community news.
           </p>
+          <ul className="perks">
+            {PERKS.map(({ Icon, label }) => (
+              <li data-fly="left" key={label}>
+                <span className="perk-icon">
+                  <Icon aria-hidden="true" className="icon-draw" strokeWidth={1.5} />
+                </span>
+                {label}
+              </li>
+            ))}
+          </ul>
         </div>
         <div className="community-form-wrap">
-          {joined ? (
-            <div className="success-message" role="status">
-              <Spark />
-              <h3>You’re in the circle.</h3>
-              <p>Thank you for joining. We’re glad you’re here.</p>
-              <button className="text-link" onClick={() => setJoined(false)} type="button">
-                Add another person <Arrow />
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={submitCommunityForm}>
-              <label>
-                Your name
-                <input name="name" placeholder="How should we call you?" required />
-              </label>
-              <label>
-                Email address
-                <input name="email" placeholder="you@example.com" required type="email" />
-              </label>
-              <button className="button button-light" type="submit">
-                Join the community <Arrow />
-              </button>
-              <small>By joining, you agree to receive community updates from Hadassah 31.</small>
-            </form>
-          )}
+          <div className="form-card" data-fly="scale">
+            {joined ? (
+              <div className="success-message" role="status">
+                <PartyPopper aria-hidden="true" className="icon-pop" strokeWidth={1.4} />
+                <h3>You’re in the circle.</h3>
+                <p>Thank you for joining. We’re glad you’re here.</p>
+                <button className="text-link" onClick={() => setJoined(false)} type="button">
+                  Add another person <Arrow />
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={submitCommunityForm}>
+                <p className="form-card-title">
+                  Join the circle <span>it takes 10 seconds</span>
+                </p>
+                <label>
+                  <span className="label-text">
+                    <UserRound aria-hidden="true" strokeWidth={1.6} /> Your name
+                  </span>
+                  <input name="name" placeholder="How should we call you?" required />
+                  <span className="input-line" aria-hidden="true" />
+                </label>
+                <label>
+                  <span className="label-text">
+                    <Mail aria-hidden="true" strokeWidth={1.6} /> Email address
+                  </span>
+                  <input name="email" placeholder="you@example.com" required type="email" />
+                  <span className="input-line" aria-hidden="true" />
+                </label>
+                <button className="button button-light button-send" type="submit">
+                  Join the community
+                  <SendHorizontal aria-hidden="true" className="h-4 w-4" strokeWidth={1.8} />
+                </button>
+                <small>By joining, you agree to receive community updates from Hadassah 31.</small>
+                <a
+                  className="form-register-link"
+                  href={EVENT.registerUrl}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Coming on 14 November? Register for the event on Luma <Arrow />
+                </a>
+              </form>
+            )}
+          </div>
           <div className="social-community">
-            <div className="social-community-heading">
+            <div className="social-community-heading" data-fly="fade">
               <span>Or find your circle online</span>
               <small>Community links coming soon</small>
             </div>
@@ -645,7 +704,7 @@ export default function App() {
                 ["x", "X / Twitter"],
                 ["tiktok", "TikTok"],
               ].map(([icon, label]) => (
-                <div className="social-item" key={icon}>
+                <div className="social-item" data-fly="scale" key={icon}>
                   <SocialIcon name={icon as "whatsapp" | "instagram" | "x" | "tiktok"} />
                   <span>{label}</span>
                 </div>
@@ -656,14 +715,36 @@ export default function App() {
       </section>
 
       <footer>
-        <a className="brand" href="#home">
-          <span className="brand-flame">♢</span>
-          <span>Hadassah 31</span>
-        </a>
-        <p>Empowerment · Growth · Women’s Mentorship</p>
-        <a className="back-top" href="#home">
-          Back to top <span>↑</span>
-        </a>
+        <div className="footer-top">
+          <a className="brand" href="#home">
+            <BrandMark />
+            <span>Hadassah 31</span>
+          </a>
+          <nav className="footer-links" aria-label="Footer">
+            {NAV_LINKS.map(([href, label]) => (
+              <a href={href} key={href}>
+                {label}
+              </a>
+            ))}
+          </nav>
+          <a className="back-top" href="#home">
+            Back to top
+            <span>
+              <ArrowUp aria-hidden="true" strokeWidth={1.6} />
+            </span>
+          </a>
+        </div>
+        <p className="footer-wordmark" aria-hidden="true">
+          {"Unfolding Her".split("").map((char, index) => (
+            <span className={index >= 10 ? "wordmark-em" : undefined} key={index}>
+              {char === " " ? "\u00a0" : char}
+            </span>
+          ))}
+        </p>
+        <div className="footer-bottom">
+          <p>Empowerment · Growth · Women’s Mentorship</p>
+          <p>© {new Date().getFullYear()} Hadassah 31</p>
+        </div>
       </footer>
     </main>
   );
